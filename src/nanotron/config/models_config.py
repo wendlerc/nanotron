@@ -135,5 +135,71 @@ class Starcoder2Config:
     def n_inner(self):
         return self.intermediate_size
 
+@dataclass
+class LlaMoEConfig:
+    """Configuration for a LLAMA model with MoE
 
-NanotronConfigs = Union[LlamaConfig, Starcoder2Config, Any]
+    Be careful on having a coherent typing as we use it to reconstruct the model from yaml
+    """
+
+    bos_token_id: int = 1
+    eos_token_id: int = 2
+    hidden_act: str = "silu"
+    hidden_size: int = 4096
+    initializer_range: float = 0.02
+    intermediate_size: int = 11008
+    is_llama_config: bool = True  # We use this help differentiate models in yaml/python conversion
+    max_position_embeddings: int = 2048
+    num_attention_heads: int = 32
+    num_hidden_layers: int = 32
+    num_key_value_heads: Optional[int] = None
+    pad_token_id: Optional[int] = None
+    pretraining_tp: int = 1
+    rms_norm_eps: float = 1e-6
+    rope_scaling: Optional[dict] = None
+    rope_theta: float = 500000.0
+    rope_interleaved: bool = (
+        True  # The default value has been True, but for loading Llama3 checkpoints you have to set it to False
+    )
+    tie_word_embeddings: bool = False
+    use_cache: bool = True
+    vocab_size: int = 32000
+    # MoE specific
+    is_moe: bool = True
+    moe_num_experts: int = 8
+    num_experts_per_tok: int = 2
+    moe_loss_weight: float = 0.01
+    moe_z_loss_weight: float = 0.001
+
+    def __post_init__(self):
+        # NOTE: user don't set self._init_method, ModelArgs will set it
+        # then we only pass LlamaConfig around
+        self._is_using_mup: bool = False
+        # self._init_method: Optional[Union[RandomInit, SpectralMupInit, ExistingCheckpointInit]] = None
+
+        # for backward compatibility
+        if self.num_key_value_heads is None:
+            self.num_key_value_heads = self.num_attention_heads
+
+    def as_llama(self) -> LlamaConfig:
+        # same as gpt3 conversion above
+        config = dict(**vars(self))
+        # MoE
+        del config["is_moe"]
+        del config["moe_num_experts"]
+        del config["num_experts_per_tok"]
+        del config["moe_loss_weight"]
+        del config["moe_z_loss_weight"]
+
+
+        if "_is_using_mup" in config:
+            del config["_is_using_mup"]
+
+        return LlamaConfig(**config)
+
+    @property
+    def is_using_mup(self) -> bool:
+        return self._is_using_mup
+
+
+NanotronConfigs = Union[LlamaConfig, Starcoder2Config, LlaMoEConfig, Any]
