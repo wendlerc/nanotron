@@ -652,6 +652,7 @@ class MLP(nn.Module):
         hidden_states = self.w2(self.act(merged_states))
         return hidden_states
 
+
 class GLU(MLP):
     def __init__(
         self,
@@ -676,10 +677,11 @@ class GLU(MLP):
             expert_parallel_size=self.expert_pg_size,
         )
 
-    def forward(self, x, topo):
+    def forward(self, hidden_states, topo):
         merged_states = self.w1(hidden_states)
         hidden_states = self.w2(self.act(merged_states) * self.w3(hidden_states))
         return hidden_states
+
 
 def inclusive_cumsum(x, dim):
     scalar = ops.inclusive_cumsum(x, dim)

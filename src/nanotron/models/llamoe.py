@@ -10,8 +10,7 @@ from torch.utils.checkpoint import CheckpointFunction
 from nanotron import distributed as dist
 from nanotron.config import LlamaConfig, LlaMoEConfig, ParallelismArgs
 from nanotron.models import llama
-from nanotron.models.llama import CausalSelfAttention, LlamaForTraining, LlamaModel
-from nanotron.models.llama import LlamaDecoderLayer
+from nanotron.models.llama import CausalSelfAttention, LlamaDecoderLayer, LlamaForTraining, LlamaModel
 from nanotron.models.moe import (
     dMoE,
 )
@@ -20,7 +19,6 @@ from nanotron.parallel import ParallelContext
 from nanotron.parallel.pipeline_parallel.block import PipelineBlock
 from nanotron.parallel.pipeline_parallel.tensor_pointer import TensorPointer
 from nanotron.parallel.tensor_parallel.nn import TensorParallelColumnLinear
-
 from src.nanotron.random import RandomStates
 
 
@@ -112,16 +110,15 @@ class LlaMoeBlock(nn.Module):
 
         hidden_states = hidden_states + residual
 
-        return hidden_states,  output["sequence_mask"], aux_losses
+        return hidden_states, output["sequence_mask"], aux_losses
 
     def _checkpointed_forward(
         self,
         hidden_states: torch.Tensor,
         sequence_mask: torch.Tensor,
         aux_losses: Dict[str, Union[torch.Tensor, TensorPointer]],
-        ) -> List[torch.Tensor]:
+    ) -> List[torch.Tensor]:
         return CheckpointFunction.apply(self._core_forward, True, hidden_states, sequence_mask, aux_losses)
-
 
     def forward(
         self,
@@ -129,17 +126,15 @@ class LlaMoeBlock(nn.Module):
         sequence_mask: Union[torch.Tensor, TensorPointer],
         aux_losses: Dict[str, Union[torch.Tensor, TensorPointer]],
     ) -> Dict[str, Union[torch.Tensor, TensorPointer]]:
-        
+
         if self.recompute_layer and not isinstance(hidden_states, TensorPointer):
-            hidden_states, sequence_mask, aux_losses = self._checkpointed_forward(hidden_states, sequence_mask, aux_losses)
+            hidden_states, sequence_mask, aux_losses = self._checkpointed_forward(
+                hidden_states, sequence_mask, aux_losses
+            )
         else:
             hidden_states, sequence_mask, aux_losses = self._core_forward(hidden_states, sequence_mask, aux_losses)
 
-        return {
-            "hidden_states": hidden_states,
-            "sequence_mask": sequence_mask,
-            "aux_losses": aux_losses
-        }
+        return {"hidden_states": hidden_states, "sequence_mask": sequence_mask, "aux_losses": aux_losses}
 
 
 class LlaMoEModel(LlamaModel):
@@ -184,8 +179,8 @@ class LlaMoEModel(LlamaModel):
 
         hidden_encoder_states = {
             "hidden_states": output["input_embeds"],
-            "sequence_mask": input_mask,  
-            "aux_losses": aux_losses
+            "sequence_mask": input_mask,
+            "aux_losses": aux_losses,
         }
         for encoder_block in self.decoder:
             hidden_encoder_states = encoder_block(**hidden_encoder_states)
@@ -251,7 +246,11 @@ class LlaMoEForTraining(LlamaForTraining):
     def get_block_compute_costs(self):
         """Computes the compute cost of each block in the model so that we can do a better job of load balancing."""
         model_config = self.config
-        d_ff = model_config.intermediate_size if model_config.intermediate_size is not None else 4 * model_config.hidden_size
+        d_ff = (
+            model_config.intermediate_size
+            if model_config.intermediate_size is not None
+            else 4 * model_config.hidden_size
+        )
         d_qkv = model_config.hidden_size // model_config.num_attention_heads
         # active experts + routing
         mlp_cost = (

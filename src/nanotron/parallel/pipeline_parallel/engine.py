@@ -15,7 +15,6 @@ from nanotron.parallel.pipeline_parallel.context_manager import (
     attach_pipeline_state_to_model,
 )
 from nanotron.parallel.pipeline_parallel.state import (
-    PipelineEvalBatchState,
     PipelineTrainBatchState,
 )
 from nanotron.parallel.pipeline_parallel.tensor_pointer import TensorPointer
