@@ -44,8 +44,6 @@ from nanotron.random import (
 from nanotron.scaling.parametrization import LearningRateForSP, LearningRateForSpectralMup, ParametrizationMethod
 from nanotron.serialize.metadata import TrainingMetadata
 
-from lion_pytorch import Lion
-
 logger = logging.get_logger(__name__)
 
 
@@ -329,7 +327,9 @@ def init_optimizer_and_grad_accumulator(
     # Basic optimizer builder
     def basic_optimizer_builder(named_param_groups):
         optimizer = None
+
         if optimizer_args.optimizer_factory.name == "adamW":
+
             def optimizer(param_groups):
                 return torch.optim.AdamW(
                     param_groups,
@@ -339,20 +339,16 @@ def init_optimizer_and_grad_accumulator(
                     betas=(optimizer_args.optimizer_factory.adam_beta1, optimizer_args.optimizer_factory.adam_beta2),
                     fused=optimizer_args.optimizer_factory.torch_adam_is_fused,
                 )
+
         elif optimizer_args.optimizer_factory.name == "sgd":
+
             def optimizer(param_groups):
                 return torch.optim.SGD(
                     param_groups,
                     lr=optimizer_args.learning_rate_scheduler.learning_rate,
                     weight_decay=optimizer_args.weight_decay,
                 )
-        elif optimizer_args.optimizer_factory.name == "lion":
-            def optimizer(param_groups):
-                return Lion(
-                    param_groups,
-                    lr=optimizer_args.learning_rate_scheduler.learning_rate,
-                    weight_decay=optimizer_args.weight_decay,
-                )
+
         else:
             raise ValueError(f"Optimizer {optimizer_args.optimizer_factory.name} is not supported")
 
