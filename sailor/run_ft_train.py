@@ -30,20 +30,21 @@ class ElasticWorkerAgent(WorkerAgentServicer):
     def Kill(self, request, context):
         print(f"Killing local process ...")
         if self.training_process_alive:
+           print("HERE")
            os.system("pkill -f run_train_custom.py") # TODO: check cleanup
         self.training_process_alive = False
         # TODO: check abort
         return KillResponse()
 
     def ConfigurationChange(self, request, context):
-        assert not self.training_process
+        assert not self.training_process_alive
         print(f"Got topology: {request.topology}")
 
         # check if rank in participants
         topology_list = list(request.topology)
         if self.is_in_topo(topology_list):
             print(f"Starting new process, node rank is {self.node_rank}")
-            start_cmd = f"python run_train_custom.py --config_file {self.script_args.config_file} --world_size {self.world_size} --rank {self.node_rank} --master_ip {self.master_addr}"
+            start_cmd = f"python run_train_custom.py --config-file {self.script_args.config_file} --world-size {self.world_size} --rank {self.node_rank} --master-ip {self.master_addr}"
             os.system(start_cmd)
             self.training_process_alive = True
         return WorkerConfigurationResponse()
