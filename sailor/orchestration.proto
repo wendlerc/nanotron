@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+service WorkerAgent {
+  rpc ConfigurationChange(WorkerConfigurationRequest) returns (WorkerConfigurationResponse) {}
+  rpc CheckReady(CheckReadyRequest) returns (CheckReadyResponse) {}
+  rpc Kill(KillRequest) returns (KillResponse) {}
+}
+
+message CheckReadyRequest {
+}
+
+message CheckReadyResponse {
+    bool is_ready = 1;
+}
+
+message KillRequest {
+        bool abort = 1;
+}
+
+message KillResponse {
+}
+
+message WorkerConfigurationRequest {
+        repeated string topology = 1;
+}
+
+message WorkerConfigurationResponse {
+}
