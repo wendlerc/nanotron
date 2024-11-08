@@ -1,4 +1,5 @@
 import grpc
+import os
 import time
 import socket
 import argparse
@@ -47,7 +48,9 @@ class ElasticWorkerAgent(WorkerAgentServicer):
     def __init__(self, script_args):
         self.training_process = None
         self.hostname = socket.gethostname()
+        self.world_size = 0
         self.node_rank = -1
+        self.master_addr = None
         self.script_args = script_args
         print(f"Hello from grpc server {self.hostname}")
 
@@ -70,7 +73,7 @@ class ElasticWorkerAgent(WorkerAgentServicer):
         topology_list = list(request.topology)
         if self.is_in_topo(topology_list):
             print(f"Starting new process, node rank is {self.node_rank}")
-            self.training_process = multiprocessing.Process(target=run)
+            self.training_process = multiprocessing.Process(target=run, args=(args.config_file, self.world_size, self.node_rank, self.master_addr))
             self.training_process.start()
 
         return WorkerConfigurationResponse()
@@ -79,6 +82,8 @@ class ElasticWorkerAgent(WorkerAgentServicer):
         if self.hostname not in topology:
             return False
         self.node_rank = topology.index(self.hostname)
+        self.world_size = len(topology)
+        self.master_addr = topology[0]
         return True
 
 
@@ -265,7 +270,13 @@ def get_args():
     parser.add_argument("--config-file", type=str, required=True, help="Path to the YAML or python config file")
     return parser.parse_args()
 
-def run(config_file):
+def run(config_file, world_size, rank, master_addr):
+
+    os.environ['WORLD_SIZE'] = str(world_size)
+    os.environ['RANK'] = str(rank)
+    os.environ['MASTER_ADDR'] = master_addr
+    os.environ['MASTER_PORT'] = "1234" # TODO
+
     trainer = DistributedTrainer(config_file)
     dataloader = get_dataloader(trainer)
 
