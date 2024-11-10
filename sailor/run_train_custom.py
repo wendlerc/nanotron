@@ -226,6 +226,7 @@ def get_args():
     parser.add_argument("--world-size", type=int, required=True, help="World size")
     parser.add_argument("--rank", type=int, required=True, help="Rank")
     parser.add_argument("--master-ip", type=str, required=True, help="Master address")
+    parser.add_argument("--master-port", type=int, required=True, help="Master port")
 
     return parser.parse_args()
 
@@ -238,7 +239,7 @@ if __name__ == "__main__":
     os.environ['RANK'] = str(args.rank)
     os.environ['LOCAL_RANK'] = str(args.rank % 4)
     os.environ['MASTER_ADDR'] = args.master_ip
-    os.environ['MASTER_PORT'] = "1234" # TODO
+    os.environ['MASTER_PORT'] = str(args.master_port)
 
 
     # Load trainer and data

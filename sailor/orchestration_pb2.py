@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13orchestration.proto\"\x13\n\x11\x43heckReadyRequest\"&\n\x12\x43heckReadyResponse\x12\x10\n\x08is_ready\x18\x01 \x01(\x08\"\x1c\n\x0bKillRequest\x12\r\n\x05\x61\x62ort\x18\x01 \x01(\x08\"\x0e\n\x0cKillResponse\".\n\x1aWorkerConfigurationRequest\x12\x10\n\x08topology\x18\x01 \x03(\t\"\x1d\n\x1bWorkerConfigurationResponse2\xc1\x01\n\x0bWorkerAgent\x12R\n\x13\x43onfigurationChange\x12\x1b.WorkerConfigurationRequest\x1a\x1c.WorkerConfigurationResponse\"\x00\x12\x37\n\nCheckReady\x12\x12.CheckReadyRequest\x1a\x13.CheckReadyResponse\"\x00\x12%\n\x04Kill\x12\x0c.KillRequest\x1a\r.KillResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13orchestration.proto\"\x13\n\x11\x43heckReadyRequest\"&\n\x12\x43heckReadyResponse\x12\x10\n\x08is_ready\x18\x01 \x01(\x08\"\x1c\n\x0bKillRequest\x12\r\n\x05\x61\x62ort\x18\x01 \x01(\x08\"\x0e\n\x0cKillResponse\"<\n\x1aWorkerConfigurationRequest\x12\x0c\n\x04port\x18\x01 \x01(\x05\x12\x10\n\x08topology\x18\x02 \x03(\t\"\x1d\n\x1bWorkerConfigurationResponse2\xc1\x01\n\x0bWorkerAgent\x12R\n\x13\x43onfigurationChange\x12\x1b.WorkerConfigurationRequest\x1a\x1c.WorkerConfigurationResponse\"\x00\x12\x37\n\nCheckReady\x12\x12.CheckReadyRequest\x1a\x13.CheckReadyResponse\"\x00\x12%\n\x04Kill\x12\x0c.KillRequest\x1a\r.KillResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -40,9 +40,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_KILLRESPONSE']._serialized_start=114
   _globals['_KILLRESPONSE']._serialized_end=128
   _globals['_WORKERCONFIGURATIONREQUEST']._serialized_start=130
-  _globals['_WORKERCONFIGURATIONREQUEST']._serialized_end=176
-  _globals['_WORKERCONFIGURATIONRESPONSE']._serialized_start=178
-  _globals['_WORKERCONFIGURATIONRESPONSE']._serialized_end=207
-  _globals['_WORKERAGENT']._serialized_start=210
-  _globals['_WORKERAGENT']._serialized_end=403
+  _globals['_WORKERCONFIGURATIONREQUEST']._serialized_end=190
+  _globals['_WORKERCONFIGURATIONRESPONSE']._serialized_start=192
+  _globals['_WORKERCONFIGURATIONRESPONSE']._serialized_end=221
+  _globals['_WORKERAGENT']._serialized_start=224
+  _globals['_WORKERAGENT']._serialized_end=417
 # @@protoc_insertion_point(module_scope)

@@ -21,7 +21,8 @@ message KillResponse {
 }
 
 message WorkerConfigurationRequest {
-        repeated string topology = 1;
+	int32 port = 1;
+        repeated string topology = 2;
 }
 
 message WorkerConfigurationResponse {

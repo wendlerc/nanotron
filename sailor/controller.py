@@ -14,13 +14,14 @@ def get_slurm_nodelist():
     return hostnames_list[:-1]
 
 class ClusterController:
-    def __init__(self, world_size: int, grpc_port: int) -> None:
+    def __init__(self, world_size: int, grpc_port: int, training_master_port: int) -> None:
         self.world_size = world_size
         self.hostnames = get_slurm_nodelist()
         addresses = ",".join(self.hostnames)
         os.environ["no_proxy"] = addresses
         self.num_nodes = len(self.hostnames)
         self.grpc_port = grpc_port
+        self.training_master_port = training_master_port
 
         print(f"Num nodes {self.num_nodes}, Hostnames: {self.hostnames}")
         self.alive_nodes = []
@@ -49,7 +50,7 @@ class ClusterController:
                     break
 
                 # broadcast new topology
-                self.send_new_topology(new_topology)
+                self.send_new_topology(self.training_master_port, new_topology)
             else:
                 self.alive_nodes = new_alive_nodes
             time.sleep(10)
@@ -62,13 +63,13 @@ class ClusterController:
             return self.alive_nodes[:self.world_size]
 
 
-    def send_new_topology(self, topology: list[str]) -> None:
+    def send_new_topology(self, port: int, topology: list[str]) -> None:
         for node in self.alive_nodes:
-            self.send_new_topology_to_node(node, topology)
+            self.send_new_topology_to_node(node, port, topology)
 
 
-    def send_new_topology_to_node(self, node: str, topology: list[str]) -> None:
-        request = WorkerConfigurationRequest(topology=topology)
+    def send_new_topology_to_node(self, node: str, port: int, topology: list[str]) -> None:
+        request = WorkerConfigurationRequest(port=port, topology=topology)
         grpc_target = f'{node}:{self.grpc_port}'
         with grpc.insecure_channel(grpc_target) as channel:
             stub = WorkerAgentStub(channel)
@@ -115,9 +116,11 @@ if __name__ == "__main__":
                         help='world_size (in number of nodes)', required=True)
     parser.add_argument('--grpc_port', type=int,
                         help='Port to start grpc server', required=True)
+    parser.add_argument('--training_master_port', type=int,
+                        help='Port used for training', required=True)
 
     args = parser.parse_args()
 
     time.sleep(10) # some sleep time to allow the workers to start their grpc servers
-    controller = ClusterController(args.world_size, args.grpc_port)
+    controller = ClusterController(args.world_size, args.grpc_port, args.training_master_port)
     controller.monitor()
