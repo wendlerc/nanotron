@@ -45,7 +45,7 @@ class ElasticWorkerAgent(WorkerAgentServicer):
         topology_list = list(request.topology)
         if self.is_in_topo(topology_list):
             print(f"Starting new process, node rank is {self.node_rank}")
-            start_cmd_base = f"python run_train_custom.py --config-file {self.script_args.config_file} --world-size {self.world_size} --master-ip {self.master_addr} --master-port {request.port}"
+            start_cmd_base = f"python /workspace/nanotron/sailor/run_train_custom.py --config-file {self.script_args.config_file} --world-size {self.world_size} --master-ip {self.master_addr} --master-port {request.port}"
             for i in range(self.gpus_per_node):
                 print(f"Start for process {i}")
                 rank_i = self.node_rank*self.gpus_per_node + i
