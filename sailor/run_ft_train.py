@@ -32,7 +32,7 @@ class ElasticWorkerAgent(WorkerAgentServicer):
         print(f"Killing local process ...")
         if self.training_process_alive:
            print("HERE")
-           os.system("pkill -f run_train_custom.py") # TODO: check cleanup
+           os.system("pkill -f run_train_custom") # TODO: check cleanup
         self.training_process_alive = False
         # TODO: check abort
         return KillResponse()
@@ -49,7 +49,7 @@ class ElasticWorkerAgent(WorkerAgentServicer):
             for i in range(self.gpus_per_node):
                 print(f"Start for process {i}")
                 rank_i = self.node_rank*self.gpus_per_node + i
-                start_cmd_i = start_cmd_base + f" --rank {rank_i} &"
+                start_cmd_i = start_cmd_base + f" --rank {rank_i} > log_{i} &"
                 os.system(start_cmd_i)
             self.training_process_alive = True
         return WorkerConfigurationResponse()
@@ -78,8 +78,9 @@ if __name__ == "__main__":
     server.add_insecure_port(f'[::]:{args.grpc_port}')
 
     def terminate(signum, _):
-        if not agent.training_process_alive:
-            os.system("pkill -f run_train_custom.py")
+        if agent.training_process_alive:
+            print(f"KILL ALL")
+            os.system("pkill -f run_train_custom")
         done = server.stop(5)
         done.wait()
         print(f"Received {signum}, stop complete!")
