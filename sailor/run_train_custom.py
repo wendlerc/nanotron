@@ -236,6 +236,7 @@ if __name__ == "__main__":
 
     os.environ['WORLD_SIZE'] = str(args.world_size)
     os.environ['RANK'] = str(args.rank)
+    os.environ['LOCAL_RANK'] = str(args.rank % 4)
     os.environ['MASTER_ADDR'] = args.master_ip
     os.environ['MASTER_PORT'] = "1234" # TODO
 

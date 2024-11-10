@@ -105,10 +105,10 @@ CONFIG_TO_MODEL_CLASS = {
     "Starcoder2Config": Starcoder2ForTraining,
 }
 
-try:
-    import wandb
-except ImportError:
-    wandb = None
+#try:
+#    import wandb
+#except ImportError:
+wandb = None
 
 
 class DistributedTrainer:

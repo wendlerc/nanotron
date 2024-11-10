@@ -18,6 +18,7 @@ class ElasticWorkerAgent(WorkerAgentServicer):
     def __init__(self, script_args):
         self.training_process_alive = False
         self.hostname = socket.gethostname()
+        self.gpus_per_node = 4
         self.world_size = 0
         self.node_rank = -1
         self.master_addr = None
@@ -44,8 +45,12 @@ class ElasticWorkerAgent(WorkerAgentServicer):
         topology_list = list(request.topology)
         if self.is_in_topo(topology_list):
             print(f"Starting new process, node rank is {self.node_rank}")
-            start_cmd = f"python run_train_custom.py --config-file {self.script_args.config_file} --world-size {self.world_size} --rank {self.node_rank} --master-ip {self.master_addr}"
-            os.system(start_cmd)
+            start_cmd_base = f"python run_train_custom.py --config-file {self.script_args.config_file} --world-size {self.world_size} --master-ip {self.master_addr}"
+            for i in range(self.gpus_per_node):
+                print(f"Start for process {i}")
+                rank_i = self.node_rank*self.gpus_per_node + i
+                start_cmd_i = start_cmd_base + f" --rank {rank_i} &"
+                os.system(start_cmd_i)
             self.training_process_alive = True
         return WorkerConfigurationResponse()
 
@@ -53,7 +58,7 @@ class ElasticWorkerAgent(WorkerAgentServicer):
         if self.hostname not in topology:
             return False
         self.node_rank = topology.index(self.hostname)
-        self.world_size = len(topology)
+        self.world_size = len(topology) * self.gpus_per_node
         self.master_addr = topology[0]
         return True
 
@@ -73,8 +78,8 @@ if __name__ == "__main__":
     server.add_insecure_port(f'[::]:{args.grpc_port}')
 
     def terminate(signum, _):
-        if agent.training_process is not None:
-            agent.training_process.terminate()
+        if not agent.training_process_alive:
+            os.system("pkill -f run_train_custom.py")
         done = server.stop(5)
         done.wait()
         print(f"Received {signum}, stop complete!")
