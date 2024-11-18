@@ -193,23 +193,33 @@ class CoreAttention(nn.Module):
         key_states: torch.Tensor,  # [batch_size, kv_length, n_local_kv_heads, inner_dim]
         value_states: torch.Tensor,  # [batch_size, kv_length, n_local_kv_heads, inner_dim]
     ):
-        from flash_attn.flash_attn_interface import flash_attn_func
+        use_flash_attn = True
+        # use_flash_attn = False
+        if use_flash_attn:
+            from flash_attn.flash_attn_interface import flash_attn_func
 
-        # NOTE: this scale is for µTransfer,
-        # in SP, we use sqrt(1/d_h)
-        softmax_scale = 1 / query_states.shape[-1] if self.is_using_mup else None
-        # For now we are assuming that we use causual mask. No magic here
-        causal = True
-        attn_output = flash_attn_func(
-            q=query_states,
-            k=key_states,
-            v=value_states,
-            dropout_p=0.0,
-            softmax_scale=softmax_scale,
-            causal=causal,
-            return_attn_probs=False,
-        )
-
+            # NOTE: this scale is for µTransfer,
+            # in SP, we use sqrt(1/d_h)
+            softmax_scale = 1 / query_states.shape[-1] if self.is_using_mup else None
+            # For now we are assuming that we use causual mask. No magic here
+            causal = True
+            attn_output = flash_attn_func(
+                q=query_states,
+                k=key_states,
+                v=value_states,
+                dropout_p=0.0,
+                softmax_scale=softmax_scale,
+                causal=causal,
+                return_attn_probs=False,
+            )
+        else:
+            attn_output = torch.nn.functional.scaled_dot_product_attention(
+                query_states.permute(0, 2, 1, 3),
+                key_states.permute(0, 2, 1, 3),
+                value_states.permute(0, 2, 1, 3),
+                dropout_p=0.0,
+                is_causal=True,
+            )  # [batch, q_length, q_heads, head_dim]
         return attn_output
 
 
