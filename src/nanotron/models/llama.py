@@ -213,13 +213,14 @@ class CoreAttention(nn.Module):
                 return_attn_probs=False,
             )
         else:
+            assert not self.is_using_mup, "have not tested this"
             attn_output = torch.nn.functional.scaled_dot_product_attention(
                 query_states.permute(0, 2, 1, 3),
                 key_states.permute(0, 2, 1, 3),
                 value_states.permute(0, 2, 1, 3),
                 dropout_p=0.0,
                 is_causal=True,
-            )  # [batch, q_length, q_heads, head_dim]
+            ).permute(0, 2, 1, 3)
         return attn_output
 
 

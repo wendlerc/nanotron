@@ -523,6 +523,15 @@ class DistributedTrainer:
                     log_entries = [LogItem("validation_loss_avg", loss_avg, "human_format")]
                     self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
 
+                    # NOTE: only one rank writes to wandb
+                    if dist.get_rank(self.parallel_context.world_pg) == self.logger_ranks[0] and wandb is not None:
+                        wandb.log(
+                            {
+                                **{log_item.tag: log_item.scalar_value for log_item in log_entries},
+                                "iteration_step": self.iteration_step,
+                            }
+                        )
+        
                 # Checkpoint
                 if self.iteration_step % self.config.checkpoints.checkpoint_interval == 0:
                     self.save_checkpoint()
@@ -635,6 +644,13 @@ class DistributedTrainer:
             nb_microbatches=self.limit_val_batches,
         )
         return outputs
+
+    def valid_step_logs(self,
+        outputs: Iterable[Dict[str, Union[torch.Tensor, TensorPointer]]],
+        loss_avg: Optional[torch.Tensor],
+    ) -> None:
+        pass
+
 
     def train_step_logs(
         self,
