@@ -130,5 +130,5 @@ tokens:
   limit_val_batches: 5
   micro_batch_size: 2
   sequence_length: 256
-  train_steps: 15
+  train_steps: 200
   val_check_interval: 2
