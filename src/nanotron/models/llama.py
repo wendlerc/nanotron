@@ -267,6 +267,9 @@ class RotaryEmbeddingKyleLikeFA(torch.nn.Module):
         self.max_seq_len = None
         self.rpe = None
 
+        from torchtune.modules import RotaryPositionalEmbeddings
+        self.rpe_builder = RotaryPositionalEmbeddings
+
     def forward(self, q, kv):
         bs, q_len, n_heads, _ = q.shape
         assert self.dim == _
@@ -275,9 +278,9 @@ class RotaryEmbeddingKyleLikeFA(torch.nn.Module):
 
         if (self.rpe is None) or (self.max_seq_len != q_len):
             self.max_seq_len = q_len
-            self.rpe = torchtune.modules.RotaryPositionalEmbeddings(dim=self.dim,
-                                                                    max_seq_len=self.max_seq_len,
-                                                                    base=self.base).to(q.device)
+            self.rpe = self.rpe_builder(dim=self.dim,
+                                        max_seq_len=self.max_seq_len,
+                                        base=self.base).to(q.device)
         q_out = self.rpe(q)
         kv_out = torch.stack((self.rpe(kv[:, :, 0]), kv[:, :, 1]), 2)
         return q_out, kv_out
@@ -291,7 +294,6 @@ class CausalSelfAttention(nn.Module, AttachableStore):
         tp_pg: dist.ProcessGroup,
         layer_idx: int,
     ):
-
         super().__init__()
         # Tensor parallel considerations: We split tensors along head dimension
         assert (
@@ -358,7 +360,6 @@ class CausalSelfAttention(nn.Module, AttachableStore):
                 dim=self.d_qk, interleaved=config.rope_interleaved, base=config.rope_theta
             )
         else:
-            import torchtune.modules
             assert config.rope_interleaved, "this case not yet tested"
             self.flash_rotary_embedding = RotaryEmbeddingKyleLikeFA(dim=self.d_qk, base=config.rope_theta)
 

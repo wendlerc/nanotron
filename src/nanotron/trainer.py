@@ -283,7 +283,6 @@ class DistributedTrainer:
 
     def pre_training(self, *args, **kwargs):
         self._print_training_plan()
-
         metadata: TrainingMetadata = self.metadata
 
         log_rank(
@@ -503,35 +502,18 @@ class DistributedTrainer:
 
                 if (not skip_validation) and (self.iteration_step - 1) % self.val_check_interval == 0:
                     self._update_valid_dataloader_based_on_training_stages(dataloader_valid)
-                    valid_outputs = self.validation_step(dataloader=self.current_valid_dataloader)
-
-                    if isinstance(valid_outputs[0]["loss"], torch.Tensor):
-                        loss_avg = torch.stack([_["loss"] for _ in valid_outputs]).sum()
-                        handle = dist.all_reduce(loss_avg, group=self.parallel_context.dp_pg, async_op=True,
-                                                 op=dist.ReduceOp.AVG)
-                    else:
-                        loss_avg = None
-                        handle = None
-
-                    if handle is not None:
-                        handle.wait()
+                    valid_outputs, valid_loss_avg = self.validation_step(dataloader=self.current_valid_dataloader)
 
                     self.valid_metadata.consumed_train_samples += self.global_batch_size
                     self.valid_metadata.last_train_step = self.iteration_step
                     self.valid_metadata.data_stages[self.valid_metadata.last_stage_idx].consumed_train_samples += self.global_batch_size
 
-                    log_entries = [LogItem("validation_loss_avg", loss_avg, "human_format")]
-                    self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
+                if (not skip_validation) and (self.iteration_step - 1) % self.config.logging.iteration_step_info_interval == 0:
+                    self.valid_step_logs(outputs=valid_outputs, loss_avg=valid_loss_avg)
 
-                    # NOTE: only one rank writes to wandb
-                    if dist.get_rank(self.parallel_context.world_pg) == self.logger_ranks[0] and wandb is not None:
-                        wandb.log(
-                            {
-                                **{log_item.tag: log_item.scalar_value for log_item in log_entries},
-                                "iteration_step": self.iteration_step,
-                            }
-                        )
-        
+                # if (self.iteration_step - 1) % self.config.logging.iteration_step_info_interval == 0:
+                #     self.train_step_logs(outputs=outputs, loss_avg=loss_avg)
+
                 # Checkpoint
                 if self.iteration_step % self.config.checkpoints.checkpoint_interval == 0:
                     self.save_checkpoint()
@@ -634,7 +616,6 @@ class DistributedTrainer:
             handle.wait()
 
         self.post_train_step()
-
         return outputs, loss_avg
 
     def validation_step(self, dataloader: Iterator[Dict[str, Union[torch.Tensor, TensorPointer]]]) -> Iterable[Dict]:
@@ -643,14 +624,36 @@ class DistributedTrainer:
             batch=(next(dataloader) for _ in range(self.limit_val_batches)),
             nb_microbatches=self.limit_val_batches,
         )
-        return outputs
+
+        if isinstance(outputs[0]["loss"], torch.Tensor):
+            loss_avg = torch.stack([_["loss"] for _ in outputs]).sum()
+            handle = dist.all_reduce(loss_avg,
+                                     group=self.parallel_context.dp_pg,
+                                     async_op=True,
+                                     op=dist.ReduceOp.AVG)
+        else:
+            loss_avg = None
+            handle = None
+
+        if handle is not None:
+            handle.wait()
+        return outputs, loss_avg
 
     def valid_step_logs(self,
         outputs: Iterable[Dict[str, Union[torch.Tensor, TensorPointer]]],
         loss_avg: Optional[torch.Tensor],
     ) -> None:
-        pass
+        log_entries = [LogItem("validation_loss_avg", loss_avg, "human_format")]
+        self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
 
+        # NOTE: only one rank writes to wandb
+        if dist.get_rank(self.parallel_context.world_pg) == self.logger_ranks[0] and wandb is not None:
+            wandb.log(
+                {
+                    **{log_item.tag: log_item.scalar_value for log_item in log_entries},
+                    "iteration_step": self.iteration_step,
+                }
+            )
 
     def train_step_logs(
         self,
@@ -722,7 +725,6 @@ class DistributedTrainer:
                         "iteration_step": self.iteration_step,
                     }
                 )
-
             self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
 
         # Nanotron Benchmark mode: we log the throughput and exit
