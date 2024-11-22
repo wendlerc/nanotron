@@ -520,8 +520,10 @@ class DistributedTrainer:
                     self.valid_metadata.last_train_step = self.iteration_step
                     self.valid_metadata.data_stages[self.valid_metadata.last_stage_idx].consumed_train_samples += self.global_batch_size
 
-                    log_entries = [LogItem("validation_loss_avg", loss_avg, "human_format")]
-                    self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
+                     if dist.get_rank(self.parallel_context.world_pg) in self.logger_ranks:
+                        log_entries = [LogItem("validation_loss_avg", loss_avg, "human_format")]
+                        self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
+
 
                     # NOTE: only one rank writes to wandb
                     if dist.get_rank(self.parallel_context.world_pg) == self.logger_ranks[0] and wandb is not None:
