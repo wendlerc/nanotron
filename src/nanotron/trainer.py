@@ -508,12 +508,21 @@ class DistributedTrainer:
                     self.valid_metadata.last_train_step = self.iteration_step
                     self.valid_metadata.data_stages[self.valid_metadata.last_stage_idx].consumed_train_samples += self.global_batch_size
 
-                if (not skip_validation) and (self.iteration_step - 1) % self.config.logging.iteration_step_info_interval == 0:
-                    self.valid_step_logs(outputs=valid_outputs, loss_avg=valid_loss_avg)
+                     if dist.get_rank(self.parallel_context.world_pg) in self.logger_ranks:
+                        log_entries = [LogItem("validation_loss_avg", loss_avg, "human_format")]
+                        self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
 
-                # if (self.iteration_step - 1) % self.config.logging.iteration_step_info_interval == 0:
-                #     self.train_step_logs(outputs=outputs, loss_avg=loss_avg)
 
+                    # NOTE: only one rank writes to wandb
+                    if dist.get_rank(self.parallel_context.world_pg) == self.logger_ranks[0] and wandb is not None:
+                        wandb.log(
+                            {
+                                **{log_item.tag: log_item.scalar_value for log_item in log_entries},
+                                # "iteration_step": self.iteration_step,
+                            },
+                            step=self.iteration_step
+                        )
+        
                 # Checkpoint
                 if self.iteration_step % self.config.checkpoints.checkpoint_interval == 0:
                     self.save_checkpoint()
@@ -723,7 +732,8 @@ class DistributedTrainer:
                     {
                         **{log_item.tag: log_item.scalar_value for log_item in log_entries},
                         "iteration_step": self.iteration_step,
-                    }
+                    },
+                    step=self.iteration_step
                 )
             self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
 
