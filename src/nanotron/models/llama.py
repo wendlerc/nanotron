@@ -44,8 +44,8 @@ from nanotron.random import RandomStates
 from nanotron.scaling.parametrization import SpectralMupParametrizator, StandardParametrizator
 from nanotron.utils import checkpoint_method
 
-# use_flash_attn = False
-use_flash_attn = True
+use_flash_attn = False
+# use_flash_attn = True
 
 logger = logging.get_logger(__name__)
 
@@ -168,7 +168,11 @@ class MLP(nn.Module):
             bias=False,
             async_communication=tp_linear_async_communication and tp_mode is TensorParallelLinearMode.REDUCE_SCATTER,
         )
-        self.split_silu_mul = torch.compile(GLUActivation(config.hidden_act))
+        do_compile = True
+        # self.split_silu_mul = torch.compile(GLUActivation(config.hidden_act))
+        self.split_silu_mul = GLUActivation(config.hidden_act)
+        if do_compile:
+            self.split_silu_mul = torch.compile(self.split_silu_mul)
 
     def forward(self, hidden_states):  # [seq_length, batch_size, hidden_dim]
         merged_states = self.gate_up_proj(hidden_states)
@@ -387,8 +391,6 @@ class CausalSelfAttention(nn.Module, AttachableStore):
         hidden_states,  # [seq_length, batch_size, hidden_size]
         sequence_mask,  # [batch_size, seq_length]
     ):
-        from flash_attn import bert_padding
-
         qkv_states = self.qkv_proj(
             hidden_states
         )  # [seq_length, batch_size, n_local_q_heads * d_qk + 2 * n_local_kv_heads * d_qk]
@@ -440,6 +442,7 @@ class CausalSelfAttention(nn.Module, AttachableStore):
             key_states = self.rotary_embedding(key_states, position_ids=position_ids)
 
             if "key" not in store:
+                from flash_attn import bert_padding
                 from flash_attn.flash_attn_interface import flash_attn_varlen_func
                 # First inference iteration (Prefill)
                 # TODO @nouamane: support custom masking

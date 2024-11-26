@@ -221,9 +221,13 @@ class DistributedTrainer:
             checkpoint_metadata = load_meta(
                 parallel_context=self.parallel_context, root_folder=self.init_checkpoint_path
             )
-            assert isinstance(checkpoint_metadata.metas, TrainingMetadata)
+            assert isinstance(checkpoint_metadata.train_meta, TrainingMetadata)
+            assert isinstance(checkpoint_metadata.valid_meta, TrainingMetadata)
+
             log_rank(str(checkpoint_metadata), logger=logger, level=logging.INFO, rank=0)
-            self.metadata: TrainingMetadata = checkpoint_metadata.metas
+            self.metadata: TrainingMetadata = checkpoint_metadata.train_meta
+            self.valid_metadata: TrainingMetadata = checkpoint_metadata.valid_meta
+
             # NOTE: we should not change data stages
             assert (
                 self.config.tokens.train_steps > self.metadata.last_train_step
@@ -434,7 +438,7 @@ class DistributedTrainer:
 
             stage = cast(DatasetStageArgs, stage)
 
-            is_resume_from_training = self.current_dataloader is None and stage_idx_to_resume == stage_idx
+            is_resume_from_training = self.current_valid_dataloader is None and stage_idx_to_resume == stage_idx
             if (stage.start_training_step == self.iteration_step) or is_resume_from_training:
                 if self.current_valid_dataloader is not None:
                     prev_stage_name = self.config.valid_data_stages[stage_idx - 1].name
@@ -508,21 +512,7 @@ class DistributedTrainer:
                     self.valid_metadata.last_train_step = self.iteration_step
                     self.valid_metadata.data_stages[self.valid_metadata.last_stage_idx].consumed_train_samples += self.global_batch_size
 
-                     if dist.get_rank(self.parallel_context.world_pg) in self.logger_ranks:
-                        log_entries = [LogItem("validation_loss_avg", loss_avg, "human_format")]
-                        self.loggerwriter.add_scalars_from_list(log_entries, self.iteration_step)
-
-
-                    # NOTE: only one rank writes to wandb
-                    if dist.get_rank(self.parallel_context.world_pg) == self.logger_ranks[0] and wandb is not None:
-                        wandb.log(
-                            {
-                                **{log_item.tag: log_item.scalar_value for log_item in log_entries},
-                                # "iteration_step": self.iteration_step,
-                            },
-                            step=self.iteration_step
-                        )
-        
+                    self.valid_step_logs(outputs=valid_outputs, loss_avg=valid_loss_avg)
                 # Checkpoint
                 if self.iteration_step % self.config.checkpoints.checkpoint_interval == 0:
                     self.save_checkpoint()
@@ -986,6 +976,7 @@ class DistributedTrainer:
             parallel_context=self.parallel_context,
             root_folder=checkpoint_path,
             training_metadata=self.metadata,
+            valid_metadata=self.valid_metadata,
             config=self.config,
         )
         save_random_states(
