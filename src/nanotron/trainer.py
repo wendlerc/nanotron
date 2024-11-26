@@ -455,8 +455,7 @@ class DistributedTrainer:
                         self._clear_dataloader_from_memory(prev_dataloader, stage_name=stage.name)
 
                 self.valid_metadata.last_stage_idx = stage_idx
-
-                print(f"{self.iteration_step } -> changing dataloader to '{stage.name}'")
+                # print(f"{self.iteration_step } -> changing dataloader to '{stage.name}'")
                 dataloader = dataloaders[stage.name]
                 dataloader = dataloader() if callable(dataloader) else dataloader
                 break
@@ -498,6 +497,14 @@ class DistributedTrainer:
 
                 self.iteration_start_time = time.time()
                 self._update_train_dataloader_based_on_training_stages(dataloader_train)
+                #
+                # if 31 == self.iteration_step:
+                #     model = getattr(self.model, "model")
+                #     if False:
+                #         model.lm_head.pp_block.weight[:3, :3]
+                #     out = next(self.current_dataloader)
+                #     print(out["input_ids"][:, :25])
+                #     print(out["label_ids"][:, :25])
 
                 # Training step
                 outputs, loss_avg = self.training_step(dataloader=self.current_dataloader)
