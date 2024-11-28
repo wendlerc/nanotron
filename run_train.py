@@ -10,6 +10,9 @@ torchrun --nproc_per_node=8 run_train.py --config-file examples/config_tiny_llam
 import argparse
 from typing import Dict, cast
 
+import warnings
+warnings.filterwarnings("error")
+
 import numpy as np
 from nanotron import logging
 from nanotron.config import DataArgs, DatasetStageArgs, NanosetDatasetsArgs, PretrainDatasetsArgs
@@ -240,3 +243,4 @@ if __name__ == "__main__":
 
     # Train
     trainer.train(dataloader_train, dataloader_valid)
+    print("Done")
