@@ -50,7 +50,7 @@ pip install triton "flash-attn>=2.5.0" --no-build-isolation
 > If you get `undefined symbol: ncclCommRegister` error you should install torch 2.1.2 instead: `pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu121`
 
 > [!NOTE]
-> If you get `TypeError: ~ (operator.invert) is only implemented on integer and Boolean-type tensors` error you should also install torch 2.1.2 instead: `pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu121`
+> If you get `TypeError: ~ (operator.invert) is only implemented on integer and Boolean-type tensors` error you should also install torch 2.1.2 instead: `pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu121; pip install numpy==1.26.4`
 > In order to not break flash-attn, it needs to be reinstalled as well with `pip uninstall flash-attn; pip cache purge; pip install triton flash-attn --no-build-isolation` (at least for me)
 > Also make sure to use GPUs ">=" A100 (for V100 it this also fails).
 
