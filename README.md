@@ -43,6 +43,7 @@ pip install -e .
 
 # Install dependencies if you want to use the example scripts
 pip install datasets transformers
+pip install ninja
 pip install triton "flash-attn>=2.5.0" --no-build-isolation
 ```
 > [!NOTE]
