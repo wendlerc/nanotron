@@ -48,6 +48,11 @@ pip install triton "flash-attn>=2.5.0" --no-build-isolation
 > [!NOTE]
 > If you get `undefined symbol: ncclCommRegister` error you should install torch 2.1.2 instead: `pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu121`
 
+> [!NOTE]
+> If you get `TypeError: ~ (operator.invert) is only implemented on integer and Boolean-type tensors` error you should also install torch 2.1.2 instead: `pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu121`
+> In order to not break flash-attn, it needs to be reinstalled as well with `pip uninstall flash-attn; pip cache purge; pip install triton flash-attn --no-build-isolation` (at least for me)
+> Also make sure to use GPUs ">=" A100 (for V100 it this also fails).
+
 > [!TIP]
 > We log to wandb automatically if it's installed. For that you can use `pip install wandb`. If you don't want to use wandb, you can run `wandb disabled`.
 
