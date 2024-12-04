@@ -34,6 +34,4 @@ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node=1 run_train.py --config-
 ```
 
 5. We configured our training in a way that also serializes the snapshot before training. We can use this snapshot to compare nanotron checkpoint generations with the ones from the corresponding huggingface checkpoint. To do so, run
-`pip install accelerate`
-
-`torchrun --nproc_per_node=1 run_generate.py --ckpt-path checkpoints/0/ &> nano-gen.log` and `python examples/continued-pretraining/hf_example_generations.py &> hf-gen.log` and compare the resulting log files containing their outputs.
+`pip install accelerate`. Then you can generate using `torchrun --nproc_per_node=1 run_generate.py --ckpt-path checkpoints/0/ &> nano-gen.log` and `python examples/continued-pretraining/hf_example_generations.py &> hf-gen.log` and compare the resulting log files containing their outputs.
