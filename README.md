@@ -75,6 +75,7 @@ You can find more examples in the [`/examples`](/examples) directory:
 <!-- Make a table of the examples we support -->
 | Example | Description |
 | --- | --- |
+| `continued-pretraining` | A minimal continued pretraining example using an TinyLlama_v1.1 (1B). |
 | `custom-dataloader` | Plug a custom dataloader to nanotron |
 | `datatrove` | Use the datatrove library to load data |
 | `doremi` | Use DoReMi to speed up training |
