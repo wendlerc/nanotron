@@ -115,6 +115,11 @@ def get_datasets(
         # Note this returns things other than just train/test, which may not be intended
         raw_datasets = DatasetDict()
         for split in splits:
+            # TODO fix this later
+            print("!!!!!!")
+            print(hf_dataset_or_datasets)
+            print(hf_dataset_config_name)
+            print("!!!!!!")
             raw_datasets[split] = load_dataset(
                 hf_dataset_or_datasets,
                 hf_dataset_config_name,
@@ -285,10 +290,12 @@ def clm_process(
     dataset_processing_num_proc_per_process: int,
     dataset_overwrite_cache: bool,
     sequence_length: int,
+    pause_token_id: int = None,
+    pause_probability: float = None,
 ):
     """Concatenate all texts from raw_dataset and generate chunks of `sequence_length + 1`, where chunks overlap by a single token."""
     # Adapted from https://github.com/huggingface/transformers/blob/47e1676255e5dd86b9541f734cd4f4bdcbb50f4a/examples/pytorch/language-modeling/run_clm.py#L391-L439
-
+    print(f"Pause token id {pause_token_id} and probability {pause_probability}.")
     def group_texts(examples: Dict[str, List[np.ndarray]]) -> Dict[str, List[np.ndarray]]:
         # Concatenate all texts.
         concatenated_examples = {k: np.concatenate(v) for k, v in examples.items()}
@@ -309,6 +316,19 @@ def clm_process(
     def _tokenize_and_group_texts(texts: List[str]) -> Dict[str, List[np.ndarray]]:
         tokenized_batch = tokenizer.batch_encode_plus(texts, return_attention_mask=False, return_token_type_ids=False)
         tokenized_batch = {k: [np.array(tokenized_texts) for tokenized_texts in v] for k, v in tokenized_batch.items()}
+        
+        if pause_token_id is not None and pause_probability > 0:
+            import random
+            def insert_pauses(v, pause_probability):
+                with_pause = []
+                for tok in v:
+                    if random.random() < pause_probability:
+                        with_pause += [pause_token_id]
+                    with_pause += [tok]
+                return np.asarray(with_pause)
+                    
+            tokenized_batch['input_ids'] = [insert_pauses(v, pause_probability) for v in tokenized_batch['input_ids']]
+   
         return group_texts(tokenized_batch)
 
     train_dataset = raw_dataset.map(
@@ -339,6 +359,7 @@ class DataCollatorForCLM:
     input_pp_rank: int
     output_pp_rank: int
     parallel_context: ParallelContext
+    pause_token_id: int
 
     def __call__(self, examples: List[Dict[str, List[np.ndarray]]]) -> Dict[str, Union[torch.Tensor, TensorPointer]]:
         # Process the case when current rank doesn't require data. We return `TensorPointer` that points to ranks having the data.
@@ -373,6 +394,7 @@ class DataCollatorForCLM:
             expanded_input_length == self.sequence_length + 1
         ), f"Samples should be of length {self.sequence_length + 1} (seq_len+1), but got {expanded_input_length}"
 
+        print(f"Pause token id is {self.pause_token_id}.")
         # Process inputs: last token is the label
         if current_pp_rank == self.input_pp_rank:
             result["input_ids"] = input_ids[:, :-1]
@@ -382,6 +404,9 @@ class DataCollatorForCLM:
         if current_pp_rank == self.output_pp_rank:
             result["label_ids"] = input_ids[:, 1:]
             result["label_mask"] = np.ones((batch_size, self.sequence_length), dtype=np.bool_)
+            if self.pause_token_id is not None:
+                result["label_mask"][input_ids[:, 1:] == self.pause_token_id] = 0
+                #print(f"Masked {(result['label_mask'] == 0).sum()} pause tokens from the loss.")
 
         if isinstance(result["input_ids"], torch.Tensor) and result["input_ids"].shape[-1] != self.sequence_length:
             raise ValueError(
@@ -452,6 +477,7 @@ def get_train_dataloader(
     dataloader_drop_last: bool = True,
     dataloader_pin_memory: bool = True,
     use_loop_to_round_batch_size: bool = False,
+    pause_token_id: int = None,
 ) -> DataLoader:
     if not isinstance(train_dataset, datasets.Dataset):
         raise ValueError(f"training requires a datasets.Dataset, but got {type(train_dataset)}")
@@ -485,6 +511,7 @@ def get_train_dataloader(
         input_pp_rank=input_pp_rank,
         output_pp_rank=output_pp_rank,
         parallel_context=parallel_context,
+        pause_token_id=pause_token_id,
     )
 
     # Compute size and rank of dataloader workers

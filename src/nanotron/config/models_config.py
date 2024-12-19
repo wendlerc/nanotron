@@ -31,7 +31,7 @@ class LlamaConfig:
 
     Be careful on having a coherent typing as we use it to reconstruct the model from yaml
     """
-
+    pause_token_id: int = -1
     bos_token_id: int = 1
     eos_token_id: int = 2
     hidden_act: str = "silu"

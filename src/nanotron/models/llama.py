@@ -423,14 +423,23 @@ class CausalSelfAttention(nn.Module, AttachableStore):
                 )
                 # Remove pad tokens from key_states and concatenate samples in key_unpad
                 # cu_seqlens_k is the cumulative sequence lengths of key_states
-                (query_unpad, indices_q, cu_seqlens_q, max_seqlen_q) = bert_padding.unpad_input(
+                #print(query_states)
+                #print(sequence_mask)
+                q_padding = bert_padding.unpad_input(
                     query_states,
                     sequence_mask,
                 )
-                (key_unpad, indices_k, cu_seqlens_k, max_seqlen_k) = bert_padding.unpad_input(
+                #print(q_padding)
+                (query_unpad, indices_q, cu_seqlens_q, max_seqlen_q, _) = q_padding
+
+                (query_unpad, indices_q, cu_seqlens_q, max_seqlen_q, _) = bert_padding.unpad_input(
+                    query_states,
+                    sequence_mask,
+                )
+                (key_unpad, indices_k, cu_seqlens_k, max_seqlen_k, _) = bert_padding.unpad_input(
                     key_states, sequence_mask
                 )
-                (value_unpad, _, _, _) = bert_padding.unpad_input(value_states, sequence_mask)
+                (value_unpad, _, _, _, _) = bert_padding.unpad_input(value_states, sequence_mask)
 
                 # NOTE: this scale is for µTransfer,
                 # in SP, we use sqrt(1/d_h)

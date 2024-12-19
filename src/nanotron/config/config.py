@@ -83,6 +83,8 @@ class PretrainDatasetsArgs:
     dataset_processing_num_proc_per_process: Optional[int] = 1
     dataset_overwrite_cache: Optional[bool] = False
     text_column_name: Optional[str] = None
+    pause_token_id: Optional[int] = None
+    pause_probability: Optional[float] = None
 
     def __post_init__(self):
         if self.text_column_name is None:

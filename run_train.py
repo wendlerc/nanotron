@@ -94,7 +94,7 @@ def get_dataloader_from_data_stage(
                 hf_dataset_or_datasets=data.dataset.hf_dataset_or_datasets,
                 hf_dataset_config_name=data.dataset.hf_dataset_config_name,
                 splits=data.dataset.hf_dataset_splits,
-            )["train"]
+            )[data.dataset.hf_dataset_splits]#["train"]
 
             tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
             tokenizer.pad_token = tokenizer.eos_token
@@ -106,6 +106,7 @@ def get_dataloader_from_data_stage(
             ), f"Tokenizer's vocab size ({tokenizer.vocab_size}) is larger than the model's vocab size ({trainer.model_config.vocab_size})"
 
             # We apply the Causal Language Modeling preprocessing
+            print(data.dataset)
             train_dataset = clm_process(
                 raw_dataset=raw_dataset,
                 tokenizer=tokenizer,
@@ -113,6 +114,8 @@ def get_dataloader_from_data_stage(
                 dataset_processing_num_proc_per_process=data.dataset.dataset_processing_num_proc_per_process,
                 dataset_overwrite_cache=data.dataset.dataset_overwrite_cache,
                 sequence_length=trainer.sequence_length,
+                pause_token_id=data.dataset.pause_token_id,
+                pause_probability=data.dataset.pause_probability,
             )
 
             # We load the processed dataset on the ranks requiring it
@@ -127,6 +130,7 @@ def get_dataloader_from_data_stage(
                 dataloader_num_workers=data.num_loading_workers,
                 seed_worker=data.seed,
                 dataloader_drop_last=True,
+                pause_token_id=data.dataset.pause_token_id,
             )
 
             # Check if we have enough samples for train_steps
@@ -184,7 +188,9 @@ def get_dataloader(trainer: DistributedTrainer) -> Dict[str, DataLoader]:
     for stage_idx, stage in enumerate(trainer.config.data_stages):
         # NOTE: we only create the dataloader for the first stage,
         # then we lazy initialize the dataloader for the other stages
+        print(stage)
         stage = cast(DatasetStageArgs, stage)
+        print(stage)
         consumed_train_samples = get_consumed_train_samples_of_a_data_stage_from_ckp(stage, trainer.metadata)
         assert (
             consumed_train_samples is not None
